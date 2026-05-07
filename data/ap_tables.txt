@@ -1,0 +1,16 @@
+Table Name: AP_INVOICES_ALL
+Module: Payables
+Purpose: Stores supplier invoice header information.
+Columns:
+INVOICE_ID - Unique invoice ID
+INVOICE_NUM - Invoice number
+VENDOR_ID - Supplier ID
+INVOICE_DATE - Invoice date
+INVOICE_AMOUNT - Invoice amount
+PAYMENT_STATUS_FLAG - Payment status
+ORG_ID - Business unit ID
+
+Use Cases:
+Unpaid invoice report
+Supplier aging report
+Invoice register
