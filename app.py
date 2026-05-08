@@ -6,7 +6,22 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 
+# Load env
 load_dotenv()
+
+# Page config
+st.set_page_config(
+    page_title="Oracle Fusion AI SQL Chatbot",
+    page_icon="🤖",
+    layout="wide"
+)
+
+# Title
+st.title("🤖 Oracle Fusion AI SQL Chatbot")
+
+st.caption(
+    "Generate Oracle Fusion Finance SQL using AI + RAG + Groq"
+)
 
 # Load embeddings
 embedding = HuggingFaceEmbeddings(
@@ -19,38 +34,57 @@ db = Chroma(
     embedding_function=embedding
 )
 
-# Load Groq model
+# Load Groq
 llm = ChatGroq(
     groq_api_key=os.getenv("GROQ_API_KEY"),
     model_name="llama-3.1-8b-instant"
 )
 
-# Streamlit UI
-st.set_page_config(
-    page_title="Oracle Fusion AI SQL Generator",
-    layout="wide"
+# Chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Display history
+for msg in st.session_state.messages:
+
+    with st.chat_message(msg["role"]):
+
+        if msg["role"] == "assistant":
+            st.code(msg["content"], language="sql")
+        else:
+            st.write(msg["content"])
+
+# User question
+question = st.chat_input(
+    "Ask Oracle Fusion SQL question..."
 )
 
-st.title("Oracle Fusion AI SQL Generator")
+# Generate SQL
+if question:
 
-st.write("Generate Oracle Fusion Finance SQL using AI + RAG + Groq")
+    # Show user message
+    st.session_state.messages.append({
+        "role": "user",
+        "content": question
+    })
 
-question = st.text_area(
-    "Ask your Oracle Fusion SQL question",
-    placeholder="Example: Show unpaid supplier invoices"
-)
+    with st.chat_message("user"):
+        st.write(question)
 
-if st.button("Generate SQL"):
+    # AI response
+    with st.chat_message("assistant"):
 
-    with st.spinner("Generating SQL..."):
+        with st.spinner("Generating SQL..."):
 
-        # Retrieve metadata
-        docs = db.similarity_search(question, k=3)
+            # Retrieve metadata
+            docs = db.similarity_search(question, k=3)
 
-        context = "\n\n".join([doc.page_content for doc in docs])
+            context = "\n\n".join([
+                doc.page_content for doc in docs
+            ])
 
-        # Prompt
-        prompt = f"""
+            # Prompt
+            prompt = f"""
 You are an Oracle Fusion Finance SQL expert.
 
 Generate Oracle Fusion BIP-compatible SQL.
@@ -58,8 +92,9 @@ Generate Oracle Fusion BIP-compatible SQL.
 Rules:
 1. Use Oracle SQL syntax
 2. Use only Fusion tables
-3. Use correct joins
+3. Use proper joins
 4. Do not invent columns
+5. Return only SQL
 
 User Question:
 {question}
@@ -68,9 +103,14 @@ Relevant Metadata:
 {context}
 """
 
-        # Generate SQL
-        response = llm.invoke(prompt)
+            # Generate SQL
+            response = llm.invoke(prompt)
 
-        st.subheader("Generated SQL")
+            sql = response.content
 
-        st.code(response.content, language="sql")
+            st.code(sql, language="sql")
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": sql
+            })
